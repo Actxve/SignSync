@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SignSync Video</title>
+<link rel="stylesheet" href="Video.css">
+</head>
+
+<body>
+
+<button class="home-button" onclick="window.location.href='Landing.html'">Home</button>
+
+<div class="app">
+
+  <!-- Video Container -->
+  <div class="video-container">
+
+    <!-- Remote video -->
+    <video id="remoteVideo" autoplay></video>
+
+    <!-- Local video -->
+    <video id="localVideo" autoplay muted class="local-video"></video>
+
+  </div>
+
+  <!-- CONNECTION OVERLAY -->
+  <div class="connection-overlay">
+
+    <div class="connection-box">
+
+      <h2>Connect</h2>
+
+      <!-- START CALL SECTION -->
+      <div class="create-call">
+
+        <button class="call-button">Start Call</button>
+
+        <!-- AUTO GENERATED CODE DISPLAY -->
+        <p class="call-id-label">Your Call ID</p>
+        <div class="call-id-box" id="callId">
+          Waiting for call...
+        </div>
+
+      </div>
+
+      <!-- JOIN CALL SECTION -->
+      <div class="join-section">
+
+        <input 
+          type="text" 
+          placeholder="Enter Call ID"
+          id="joinInput"
+        >
+
+        <button class="join-button">
+          Join Call
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Captions overlay -->
+  <div class="captions-box">
+    <p id="captions">Captions appear here...</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button id="startCam">📷</button>
+    <button id="startMic">🎤</button>
+    <button id="signDetect">🤟</button>
+    <button class="end">❌</button>
+  </div>
+
+</div>
+
+<script src=""></script>
+
+</body>
+</html>

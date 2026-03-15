@@ -1,0 +1,14 @@
+[
+  {
+    "email": "zacharyaustin45@gmail.com",
+    "username": "Actxve",
+    "passwordHash": "$2a$10$bB0j8IqMVo6WEsHM9WZe..pkCtS7QUKAx8ksl89W0kZ5AzHI7edq6",
+    "createdAt": "2026-03-15T13:31:12.196Z"
+  },
+  {
+    "email": "tawarren08@gmail.com",
+    "username": "1234567",
+    "passwordHash": "$2a$10$DVrqE9O.AyT8tz5Gf6.KUeAW5fyScN6.j0PC7gHaUqZbEuRbZlaNu",
+    "createdAt": "2026-03-15T14:27:52.548Z"
+  }
+]
