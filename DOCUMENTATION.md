@@ -76,11 +76,7 @@ The project was developed iteratively using an AI-assisted pair-programming appr
 > **Prompt**: "Integrate MediaPipe Hands. Create a modular JS file `signs.js` that periodically samples hand landmarks. Write a rule-based classifier for ASL letters. Use the distance between specific landmark tips to determine if a finger is open or closed."
 - **Result**: Developed the core of `signs.js`, starting with simple letters like 'L' and 'V'.
 
-### Phase 4: Refinement & Robustness
-> **Prompt**: "Refine the sign recognition for difficult letters like M, N, S, and T by checking the thumb position relative to other fingers. Add phrases like 'Hello' and 'Thank You'. Implement a confirmation delay of 800ms to ensure stability."
-- **Result**: Expanded `signs.js` to support the full A-Z alphabet and 6 dedicated phrases.
-
-### Phase 5: User Experience
+### Phase 4: User Experience
 > **Prompt**: "Create a sequential captioning system. Captions should not override each other. Instead, they should appear as a list, and each should disappear after exactly 8 seconds. Remove all emojis from the captions to maintain a professional look."
 - **Result**: Developed `captions.js` and updated `speech.js` and `signs.js` to use the new `addCaption` queue.
 
