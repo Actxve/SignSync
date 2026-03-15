@@ -1,148 +1,112 @@
-# SignSync — Project Documentation
+# SignSync — Comprehensive Technical Documentation
 
-> **Two-way accessible video chat for deaf and hard of hearing users.**  
-> Combines AI-powered sign language recognition, real-time video calling, and speech-to-text captions into one unified communication platform.
-
----
-
-## Table of Contents
-1. [Project Overview](#1-project-overview)
-2. [System Architecture](#2-system-architecture)
-3. [Communication Flow](#3-communication-flow)
-4. [Feature Breakdown](#4-feature-breakdown)
-5. [Open-Source Credits & Licenses](#5-open-source-credits--licenses)
-6. [Setup & Running](#6-setup--running)
-7. [API Reference](#7-api-reference)
-8. [WebSocket Message Protocol](#8-websocket-message-protocol)
-9. [Sign Recognition Pipeline](#9-sign-recognition-pipeline)
-10. [Hackathon Phase Plan](#10-hackathon-phase-plan)
-11. [Known Limitations & Future Work](#11-known-limitations--future-work)
+SignSync is a high-performance, two-way accessible video chat application designed to bridge the gap between deaf/hard-of-hearing and hearing individuals. It leverages real-time AI computer vision for sign language recognition and browser-native APIs for speech-to-text and peer-to-peer communication.
 
 ---
 
-## 1. Project Overview
+## 1. Technical Stack & Frameworks
 
-SignSync eliminates the communication barrier between deaf/hard-of-hearing individuals and hearing individuals by providing:
+### Backend (Node.js)
+- **Runtime**: Node.js
+- **Framework**: Express.js (v4.18.2) — Handles static file serving and RESTful API endpoints for authentication.
+- **Real-time Communication**: `ws` (v8.16.0) — WebSocket library used for signaling (WebRTC handshake) and real-time message relay (captions).
+- **Security**: `bcryptjs` (v2.4.3) — Used for secure password hashing and verification.
 
-| Feature | Technology |
-|---|---|
-| Two-way video call | WebRTC + MediaDevices API |
-| Sign → Caption | MediaPipe Hands + rule-based gesture classifier |
-| Speech → Caption | Web Speech API (SpeechRecognition) |
-| Caption → Audio | Web Speech API (SpeechSynthesis) |
-| Real-time relay | WebSocket (ws library) |
-| User accounts | REST API + bcryptjs + local JSON file |
-| Meeting rooms | Server-generated 6-character codes |
-
----
-
-## 2. System Architecture
-
-```
-┌──────────────────────────────────────────────────────┐
-│                  Browser Client A                    │
-│  Camera → MediaPipe Hands → signs.js → WS            │
-│  Mic   → SpeechRecognition → speech.js → WS          │
-│  <video> (local + remote)                            │
-│  Caption Area                                        │
-└────────────────────┬─────────────────────────────────┘
-                     │ WebSocket
-┌────────────────────▼─────────────────────────────────┐
-│              Node.js Server (server.js)               │
-│  Express HTTP  → serves /public                      │
-│  POST /api/register  → users.json                    │
-│  POST /api/login     → users.json                    │
-│  WebSocket (ws)      → room signaling + event relay  │
-└────────────────────┬─────────────────────────────────┘
-                     │ WebSocket
-┌────────────────────▼─────────────────────────────────┐
-│                  Browser Client B                    │
-│  (same structure as Client A)                        │
-└──────────────────────────────────────────────────────┘
-```
+### Frontend (Vanilla JavaScript)
+- **Architecture**: Single Page Application (SPA) with modular JS files.
+- **Styling**: Vanilla CSS3 (Custom Design System with Poppins fonts).
+- **Computer Vision**: MediaPipe Hands (via Google CDN) — Extracts 21 3D hand landmarks at 30+ FPS.
 
 ---
 
-## 3. Communication Flow
+## 2. Core APIs & Services
 
-### Deaf User (Signer)
-```
-Camera → MediaPipe Hands → 21 Landmarks → Gesture Classifier → Caption Text
-Caption Text → WebSocket → Other User's Caption Area
-```
+### Browser APIs
+- **WebRTC (RTCPeerConnection)**: Establishes a direct peer-to-peer encrypted connection for low-latency video and audio streaming.
+- **Web Speech API (Recognition)**: Converts hearing user speech into text transcripts in real-time.
+- **Web Speech API (Synthesis)**: Converts incoming sign-language captions into audible speech (Text-to-Speech).
+- **MediaDevices (getUserMedia)**: Captures user camera and microphone streams.
 
-### Hearing User (Speaker)
-```
-Microphone → SpeechRecognition → Transcript → WebSocket → Other User's Caption Area
-Incoming Text → SpeechSynthesis → Audio Playback (if TTS enabled)
-```
+### Signaling & Networking
+- **Signaling Server**: Orchestrated via WebSocket on the Node.js backend.
+- **STUN Servers**: Uses Google's Public STUN servers (`stun.l.google.com:19302`) for NAT traversal and ICE candidate discovery.
 
 ---
 
-## 4. Feature Breakdown
+## 3. Sign Recognition Pipeline (`signs.js`)
 
-### User Accounts
-- Register with **username**, **email**, and **password**.
-- Emails are enforced unique.
-- Passwords are hashed with **bcrypt** (10 salt rounds).
-- User records stored in `users.json`.
+SignSync uses a **Geometric Classifier** engine that analyzes the relative spatial relationships between hand landmarks.
 
-### Meetings
-- Any logged-in user can **Create** a meeting → server generates a random 6-character code.
-- Any other logged-in user can **Join** a meeting by entering the code.
+### Landmark Normalization
+To ensure the system works at any distance from the camera, the engine calculates **Relative Proximity**:
+- Distances are calculated relative to the distance between the wrist and the middle finger base (CMC).
+- Helper functions like `tipNearThumb()` and `isSideways()` analyze the hand orientation in 3D space.
 
-### Video Call
-- Browser-to-browser WebRTC using STUN servers.
-- Both users see each other's camera in an enlarged layout.
-
-### Captions
-- **Speech captions**: speech-to-text transcripts generated via Web Speech API.
-- **Sign captions**: sign language recognition output.
-- Captions appear **sequentially** and disappear after **8 seconds**.
-- No emojis are used in the caption text to maintain a professional interface.
+### Gesture Classification Logic
+- **Alphabet (A-Z)**: Each letter is defined by a set of geometric constraints (e.g., "Middle finger is retracted," "Index is extended").
+- **Phrases**: High-level semantic gestures (e.g., "Hello," "Goodbye") are mapped to complex multi-finger orientations.
+- **Confirmation Timing**: 
+    - Letters require **0.8 seconds** of stable recognition to trigger.
+    - Phrases require **1.5 seconds** to prevent accidental triggers.
 
 ---
 
-## 5. Open-Source Credits & Licenses
+## 4. Sequential Caption System (`captions.js`)
 
-| Library / API | License | Purpose |
+To prevent users from being overwhelmed by overlapping text, SignSync implements a **Managed Queue**:
+- **Non-Overriding**: New captions are appended to a list rather than replacing the current text.
+- **Independent TTL**: Each caption entry has an independent **8-second timer**.
+- **Visual Feedback**: Captions fade out smoothly using CSS transitions before being removed from the DOM.
+
+---
+
+## 5. Development History & AI Prompts
+
+The project was developed iteratively using an AI-assisted pair-programming approach. Below are the core prompts and strategies used to architect the system:
+
+### Phase 1: Infrastructure
+> **Prompt**: "Scaffold a Node.js project using Express and WebSocket. Create an authentication system using a JSON flat file and bcrypt. Build a basic Single Page Application (SPA) frontend with a dark-mode CSS theme."
+- **Result**: Established `server.js`, `users.json`, and the basic screen switching logic (`auth`, `lobby`, `call`).
+
+### Phase 2: WebRTC Integration
+> **Prompt**: "Implement a WebRTC signaling flow. The host creates a 6-letter room code via WebSocket, and the guest joins it. Establish a peer-to-peer video/audio connection using Google STUN servers."
+- **Result**: Created `webrtc.js` and the signaling handlers in `server.js`.
+
+### Phase 3: Sign Recognition Engine
+> **Prompt**: "Integrate MediaPipe Hands. Create a modular JS file `signs.js` that periodically samples hand landmarks. Write a rule-based classifier for ASL letters. Use the distance between specific landmark tips to determine if a finger is open or closed."
+- **Result**: Developed the core of `signs.js`, starting with simple letters like 'L' and 'V'.
+
+### Phase 4: Refinement & Robustness
+> **Prompt**: "Refine the sign recognition for difficult letters like M, N, S, and T by checking the thumb position relative to other fingers. Add phrases like 'Hello' and 'Thank You'. Implement a confirmation delay of 800ms to ensure stability."
+- **Result**: Expanded `signs.js` to support the full A-Z alphabet and 6 dedicated phrases.
+
+### Phase 5: User Experience
+> **Prompt**: "Create a sequential captioning system. Captions should not override each other. Instead, they should appear as a list, and each should disappear after exactly 8 seconds. Remove all emojis from the captions to maintain a professional look."
+- **Result**: Developed `captions.js` and updated `speech.js` and `signs.js` to use the new `addCaption` queue.
+
+---
+
+## 6. How to Run
+
+1.  **Install Dependencies**:
+    ```bash
+    npm install
+    ```
+2.  **Start the Server**:
+    ```bash
+    npm run dev
+    ```
+3.  **Access the App**:
+    Open `http://localhost:3001` in two separate browser tabs (or two different devices) to test the call functionality.
+
+---
+
+## 7. Open Source Attribution
+
+| Component | Repository / Provider | License |
 |---|---|---|
-| [Express](https://expressjs.com/) | MIT | HTTP server & static file serving |
-| [ws](https://github.com/websockets/ws) | MIT | WebSocket server for signaling & message relay |
-| [bcryptjs](https://github.com/dcodeIO/bcrypt.js) | MIT | Password hashing |
-| [MediaPipe Hands](https://developers.google.com/mediapipe/solutions/vision/hand_landmarker) | Apache 2.0 | Real-time hand landmark detection |
-| [WebRTC](https://webrtc.org/) | W3C | Peer-to-peer video/audio streaming |
-
----
-
-## 6. Sign Recognition Pipeline
-
-### Classification Method
-SignSync uses a rule-based geometric classifier in `signs.js` that analyzes the relative positions of 21 hand landmarks provided by MediaPipe.
-
-### Current Gesture Set (Full ASL Alphabet + Phrases)
-
-#### ASL Alphabet (A–Z)
-Recognizes all 26 static letters. Letters are confirmed after being held for approximately 0.8 seconds.
-
-#### Dedicated Phrases
-These phrases are mapped to specific, geometrically distinct hand gestures and are confirmed after being held for approximately 1.5 seconds.
-
-| Gesture Key | Output Caption | Description |
-|---|---|---|
-| `PHRASE_HELLO` | "Hello" | Flat-B salute, palm outward, hand raised. |
-| `PHRASE_GOODBYE` | "Goodbye" | Open hand wave, all 5 digits extended and spread wide. |
-| `PHRASE_HOW_ARE_YOU`| "How Are You?" | Bent-B hand, fingers bent forward at MCP knuckles. |
-| `PHRASE_THANK_YOU` | "Thank You" | Flat open hand at mid-frame, palm toward camera. |
-| `PHRASE_PLEASE` | "Please Help Me" | Flat open palm facing inward toward the body. |
-| `PHRASE_TIME` | "What Time Is It?" | Index finger pointing downward (tapping wrist gesture). |
-
----
-
-## 7. Setup & Running
-
-```bash
-npm install
-node server.js
-```
-The server starts on **http://localhost:3001**.
+| Express | [expressjs/express](https://github.com/expressjs/express) | MIT |
+| WebSocket | [websockets/ws](https://github.com/websockets/ws) | MIT |
+| Bcrypt | [dcodeIO/bcrypt.js](https://github.com/dcodeIO/bcrypt.js) | MIT |
+| MediaPipe | [google/mediapipe](https://github.com/google/mediapipe) | Apache 2.0 |
+| Poppins Font | [Google Fonts](https://fonts.google.com/specimen/Poppins) | OFL |
